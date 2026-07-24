@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Attachment } from '../../types';
 
-interface EpubPreviewProps {
-  attachment: Attachment;
+export interface EpubPreviewProps {
+  attachment: {
+    id: number;
+    filename: string;
+    mimeType: string;
+    data?: ArrayBuffer;
+  };
 }
 
 export function EpubPreview({ attachment }: EpubPreviewProps) {

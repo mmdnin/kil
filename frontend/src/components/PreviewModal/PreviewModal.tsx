@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import classNames from 'classnames';
 import type { GalleryTemplate, TableRow, Attachment } from '../../types';
 
-interface PreviewModalProps {
+export interface PreviewModalProps {
   row: TableRow | null;
   columns: string[];
   template: GalleryTemplate;

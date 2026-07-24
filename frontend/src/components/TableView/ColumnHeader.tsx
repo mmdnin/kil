@@ -1,13 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import classnames from 'classnames';
 
-interface ColumnHeaderProps {
+export interface ColumnHeaderProps {
   columnName: string;
   onRename: (oldName: string, newName: string) => void;
-  onDelete?: () => void;
 }
 
-export function ColumnHeader({ columnName, onRename, onDelete }: ColumnHeaderProps) {
+export function ColumnHeader({ columnName, onRename }: ColumnHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(columnName);
 

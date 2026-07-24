@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useZenStore } from '../../store/useZenStore';
 import { Cell } from './Cell';
 import { ColumnHeader } from './ColumnHeader';
 import type { RowData } from '../../types';
 
-interface TableViewProps {
+export interface TableViewProps {
   onPreview: (item: RowData) => void;
 }
 

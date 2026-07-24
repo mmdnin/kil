@@ -1,8 +1,13 @@
 import { useState, useRef } from 'react';
-import type { Attachment } from '../../types';
 
-interface NativePreviewProps {
-  attachment: Attachment;
+export interface NativePreviewProps {
+  attachment: {
+    id: number;
+    filename: string;
+    mime_type?: string;
+    mimeType?: string;
+    data?: ArrayBuffer;
+  };
 }
 
 export function NativePreview({ attachment }: NativePreviewProps) {

@@ -1,12 +1,12 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { GalleryTemplate, TableRow, Attachment } from '../../types';
 import { TemplateSelector } from './TemplateSelector';
 import { GalleryCard } from './GalleryCard';
 import { PreviewModal } from '../PreviewModal/PreviewModal';
-import { templates as presetTemplates } from '../../templates';
+import { TEMPLATES as presetTemplates } from '../../templates';
 
-interface GalleryViewProps {
+export interface GalleryViewProps {
   rows: TableRow[];
   columns: string[];
 }

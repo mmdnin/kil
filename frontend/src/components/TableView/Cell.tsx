@@ -1,8 +1,7 @@
 import React, { useCallback } from 'react';
 import classnames from 'classnames';
-import type { RowData } from '../../types';
 
-interface CellProps {
+export interface CellProps {
   value: unknown;
   column: string;
   rowId: number;

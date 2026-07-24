@@ -1,7 +1,6 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
-import type { GalleryTemplate, TableRow } from '../../types';
+import type { GalleryTemplate } from '../../types';
 
-interface TemplateSelectorProps {
+export interface TemplateSelectorProps {
   templates: GalleryTemplate[];
   currentTemplate: string;
   onSelect: (templateId: string) => void;

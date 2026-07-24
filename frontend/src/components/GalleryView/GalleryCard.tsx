@@ -1,8 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import classnames from 'classnames';
 import type { RowData, GalleryTemplate } from '../../types';
 
-interface GalleryCardProps {
+export interface GalleryCardProps {
   item: RowData;
   template: GalleryTemplate;
   onClick: (item: RowData) => void;
