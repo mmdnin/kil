@@ -5,6 +5,18 @@ export interface RowData {
   [key: string]: unknown;
 }
 
+export interface TableRow extends RowData {}
+
+export interface Attachment {
+  id: number;
+  row_id: number;
+  col_name: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  data?: ArrayBuffer;
+}
+
 export interface GalleryTemplate {
   id: string;
   name: string;

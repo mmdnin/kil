@@ -1,12 +1,28 @@
 import { useCallback } from 'react';
-import type zenCore from '../wasm/zen_core.js';
 
-let wasmModule: typeof zenCore | null = null;
+// WASM module type placeholder
+type WasmModule = {
+  init_db: () => Promise<void>;
+  load_zl: (bytes: Uint8Array) => Promise<void>;
+  save_zl: () => Promise<Uint8Array>;
+  query: (sql: string, paramsJson: string) => Promise<string>;
+  execute: (sql: string, paramsJson: string) => Promise<number>;
+  render_markdown: (input: string) => Promise<string>;
+  get_epub_meta: (bytes: Uint8Array) => Promise<string>;
+  add_attachment: (rowId: number, col: string, filename: string, mime: string, data: Uint8Array) => Promise<number>;
+  get_attachment: (id: number) => Promise<Uint8Array>;
+  list_tables: () => Promise<string>;
+  get_schema: (table: string) => Promise<string>;
+  rename_column: (table: string, oldName: string, newName: string) => Promise<void>;
+  add_column: (table: string, colName: string, colType: string) => Promise<void>;
+};
 
-export async function getWasmModule(): Promise<typeof zenCore> {
+let wasmModule: WasmModule | null = null;
+
+export async function getWasmModule(): Promise<WasmModule> {
   if (!wasmModule) {
     const mod = await import('../wasm/zen_core.js');
-    wasmModule = mod;
+    wasmModule = mod as unknown as WasmModule;
   }
   return wasmModule;
 }

@@ -1,34 +1,51 @@
-```yaml
-name: Build and Test
+```
+# Dependencies
+node_modules/
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+# Build artifacts
+dist/
+build/
+*.js
+*.ts
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Run tests
-      run: |
-        python -m pytest tests/
-        
-    - name: Build distribution
-      run: |
-        python setup.py sdist bdist_wheel
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Compiled and binary
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+
+# System
+.DS_Store
+Thumbs.db
 ```

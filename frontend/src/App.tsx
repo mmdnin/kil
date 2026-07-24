@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useZenStore } from '../store/useZenStore';
-import { useZenDb } from '../hooks/useZenDb';
+import { useZenStore } from './store/useZenStore';
+import { useZenDb } from './hooks/useZenDb';
 import { FileDropZone } from './components/FileDropZone';
 import { TableView } from './components/TableView/TableView';
 import { GalleryView } from './components/GalleryView/GalleryView';
@@ -10,8 +10,7 @@ type ViewMode = 'table' | 'gallery';
 
 export function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const { isInitialized, isLoading, error } = useZenStore();
-  const { rows, columns } = useZenDb();
+  const { isInitialized, isLoading, error, rows, columns } = useZenStore();
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -154,3 +153,5 @@ export function App() {
     </div>
   );
 }
+
+export default App;

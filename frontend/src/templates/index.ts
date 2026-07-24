@@ -17,4 +17,5 @@ export const TEMPLATES: Record<string, GalleryTemplate> = {
   notes,
 };
 
+export { TEMPLATES as templates };
 export default TEMPLATES;

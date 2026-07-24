@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 import type { RowData, GalleryTemplate } from '../types';
 
+// WASM module placeholder - will be loaded dynamically
+let wasmModule: any = null;
+
+const loadWasm = async () => {
+  if (!wasmModule) {
+    wasmModule = await import('../wasm/zen_core.js');
+  }
+  return wasmModule;
+};
+
 interface ZenState {
   // Database state
   isInitialized: boolean;
@@ -51,7 +61,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // Import WASM module dynamically
-      const wasm = await import('./wasm/zen_core.js');
+      const wasm = await loadWasm();
       await wasm.init_db();
       
       // Load default templates
@@ -72,7 +82,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
   loadZlFile: async (bytes: Uint8Array) => {
     set({ isLoading: true, error: null });
     try {
-      const wasm = await import('./wasm/zen_core.js');
+      const wasm = await loadWasm();
       await wasm.load_zl(bytes);
       
       // Reload data after loading file
@@ -93,7 +103,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
   },
 
   saveZlFile: async () => {
-    const wasm = await import('./wasm/zen_core.js');
+    const wasm = await loadWasm();
     return wasm.save_zl();
   },
 
@@ -118,7 +128,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
   },
 
   renameColumn: async (oldName: string, newName: string) => {
-    const wasm = await import('./wasm/zen_core.js');
+    const wasm = await loadWasm();
     await wasm.rename_column('data', oldName, newName);
     set(state => ({
       columns: state.columns.map(col => col === oldName ? newName : col)
@@ -126,7 +136,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
   },
 
   addColumn: async (name: string, type: string) => {
-    const wasm = await import('./wasm/zen_core.js');
+    const wasm = await loadWasm();
     await wasm.add_column('data', name, type);
     set(state => ({
       columns: [...state.columns, name]
