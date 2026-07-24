@@ -1,0 +1,47 @@
+```
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+target/
+
+# Rust artifacts
+**/*.rs.bk
+Cargo.lock
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python (if any Python files detected in project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+.env
+.envrc
+
+# Temp files
+*.tmp
+*.temp
+```

@@ -1,0 +1,102 @@
+name: Build ZenLib
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: stable
+  NODE_VERSION: '20'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+        targets: wasm32-unknown-unknown
+        components: rust-src
+    
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: rust-core
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install wasm-pack
+      run: cargo install wasm-pack
+    
+    - name: Install binaryen (wasm-opt)
+      run: |
+        $url = "https://github.com/WebAssembly/binaryen/releases/download/version_117/binaryen-version_117-x86_64-windows.tar.gz"
+        Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\binaryen.tar.gz"
+        tar -xzf "$env:TEMP\binaryen.tar.gz" -C "$env:USERPROFILE\.cargo\bin" --strip-components=2 binaryen-version_117/bin
+      shell: pwsh
+    
+    - name: Build WASM (Release)
+      run: |
+        cd rust-core
+        wasm-pack build --target web --out-dir ../frontend/src/wasm --release
+      shell: pwsh
+    
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+      shell: pwsh
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: zenlib-windows
+        path: release/
+        retention-days: 7
+
+  deploy-pages:
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: zenlib-windows
+        path: ./dist
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

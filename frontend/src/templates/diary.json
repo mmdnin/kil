@@ -1,0 +1,8 @@
+{
+  "id": "diary",
+  "name": "日记库",
+  "coverField": "col_4",
+  "titleField": "col_1",
+  "subtitleField": "col_2",
+  "detailFields": ["col_2", "col_1", "col_3", "col_4"]
+}
