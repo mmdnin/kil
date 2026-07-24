@@ -1,0 +1,8 @@
+{
+  "id": "book",
+  "name": "书库",
+  "coverField": "col_3",
+  "titleField": "col_1",
+  "subtitleField": "col_2",
+  "detailFields": ["col_1", "col_2", "col_3", "col_4", "col_5"]
+}

@@ -1,0 +1,68 @@
+```
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+target/
+
+# Rust build artifacts
+**/*.rs.bk
+Cargo.lock
+
+# TypeScript/JavaScript
+*.tsbuildinfo
+*.js.map
+*.jsx.map
+*.tsx.map
+
+# Environment
+.env
+.env.local
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python (if any Python files exist in the project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.nox/
+*.cover
+*.log
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+```
