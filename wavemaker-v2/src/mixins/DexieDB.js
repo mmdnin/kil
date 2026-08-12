@@ -68,19 +68,21 @@ export default {
     },
     
     async useObservable(observable) {
-      const { useEffect } = await import('@vueuse/rxjs')
       const { ref } = await import('vue')
       
       const result = ref(null)
       
-      observable.subscribe({
-        next: (value) => {
-          result.value = value
-        },
-        error: (err) => {
-          console.error('Observable error:', err)
-        }
-      })
+      // 直接订阅 observable，不再依赖 @vueuse/rxjs
+      if (observable && typeof observable.subscribe === 'function') {
+        observable.subscribe({
+          next: (value) => {
+            result.value = value
+          },
+          error: (err) => {
+            console.error('Observable error:', err)
+          }
+        })
+      }
       
       return result
     },

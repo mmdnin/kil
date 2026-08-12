@@ -42,5 +42,17 @@ export default defineConfig({
   server: {
     port: 3434,
     open: true
+  },
+  // 关键：设置为相对路径，允许构建后在任何路径下运行
+  base: './',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'dexie'],
+          editor: ['@tiptap/core', '@tiptap/starter-kit']
+        }
+      }
+    }
   }
 })
