@@ -36,6 +36,7 @@ let actionLog = [];
 let undoStack = [];
 let wss = null;
 const chunks = new Map(); // "cx,cz" -> Chunk
+const entities = []; // Array of entity objects { type, x, y, z, nbt }
 
 // HTML page (will be loaded from external URL in production)
 const VIEWER_HTML = `
@@ -279,7 +280,7 @@ function setBlock(x, y, z, blockId, saveUndo = true) {
   const lx = ((x % 16) + 16) % 16;
   const lz = ((z % 16) + 16) % 16;
   
-  const oldBlock = chunk.getBlock(lx, y, lz);
+  const oldBlock = chunk.getBlock(new Vec3(lx, y, lz));
   
   if (saveUndo) {
     undoStack.push({ x, y, z, oldBlockId: oldBlock.type });
@@ -342,12 +343,12 @@ function getArea(x1, y1, z1, x2, y2, z2) {
       for (let z = minZ; z <= maxZ; z++) {
         const chunkX = Math.floor(x / 16);
         const chunkZ = Math.floor(z / 16);
-        const chunk = world.getChunk(chunkX, chunkZ);
+        const chunk = getChunk(chunkX, chunkZ);
         
         if (chunk) {
           const lx = ((x % 16) + 16) % 16;
           const lz = ((z % 16) + 16) % 16;
-          const block = chunk.getBlock(lx, y, lz);
+          const block = chunk.getBlock(new Vec3(lx, y, lz));
           if (block.type !== 0) { // Only non-air blocks
             blocks.push({ x, y, z, id: block.type, meta: block.metadata });
           }
@@ -360,16 +361,89 @@ function getArea(x1, y1, z1, x2, y2, z2) {
 }
 
 function snapshot() {
-  const chunks = [];
+  const chunkData = [];
   for (let cx = 0; cx < WORLD_SIZE; cx++) {
     for (let cz = 0; cz < WORLD_SIZE; cz++) {
-      const chunk = world.getChunk(cx, cz);
+      const chunk = getChunk(cx, cz);
       if (chunk) {
-        chunks.push({ x: cx * 16, y: 0, z: cz * 16, data: chunk.toJSON() });
+        // Serialize chunk data manually since toJSON doesn't exist
+        const blocks = [];
+        for (let lx = 0; lx < 16; lx++) {
+          for (let lz = 0; lz < 16; lz++) {
+            for (let ly = 0; ly < 256; ly++) {
+              const block = chunk.getBlock(new Vec3(lx, ly, lz));
+              if (block.type !== 0) {
+                blocks.push({ x: lx, y: ly, z: lz, type: block.type, meta: block.metadata });
+              }
+            }
+          }
+        }
+        chunkData.push({ x: cx * 16, y: 0, z: cz * 16, blocks });
       }
     }
   }
-  return { chunks };
+  return { chunks: chunkData, entities: [...entities] };
+}
+
+// Spawn entity (M2 implementation)
+function spawnEntity(type, x, y, z) {
+  if (paused) {
+    return { status: 'paused' };
+  }
+  
+  // Map common entity names to Minecraft 1.8 entity IDs
+  const entityMap = {
+    'sheep': 'Sheep',
+    'cow': 'Cow',
+    'pig': 'Pig',
+    'chicken': 'Chicken',
+    'zombie': 'Zombie',
+    'skeleton': 'Skeleton',
+    'creeper': 'Creeper',
+    'spider': 'Spider',
+    'villager': 'Villager',
+    'horse': 'Horse',
+    'wolf': 'Wolf',
+    'ocelot': 'Ocelot'
+  };
+  
+  const mcType = entityMap[type.toLowerCase()] || type;
+  
+  // Create entity NBT
+  const entityNbt = {
+    type: 'compound',
+    name: '',
+    value: {
+      id: { type: 'string', value: mcType },
+      Pos: { type: 'list', value: { type: 'double', value: [x + 0.5, y, z + 0.5] } },
+      Motion: { type: 'list', value: { type: 'double', value: [0, 0, 0] } },
+      Rotation: { type: 'list', value: { type: 'float', value: [0, 0] } },
+      Health: { type: 'float', value: 20 },
+      FallDistance: { type: 'float', value: 0 },
+      Fire: { type: 'short', value: 0 },
+      Air: { type: 'short', value: 300 },
+      OnGround: { type: 'byte', value: 1 },
+      NoGravity: { type: 'byte', value: 0 }
+    }
+  };
+  
+  // Add sheep-specific color if applicable
+  if (mcType === 'Sheep') {
+    entityNbt.value.Color = { type: 'byte', value: 0 }; // White sheep
+  }
+  
+  entities.push({
+    type: mcType,
+    x, y, z,
+    nbt: entityNbt
+  });
+  
+  const action = { time: Date.now(), type: 'spawn_entity', entityType: mcType, x, y, z };
+  actionLog.push(action);
+  broadcastLog(`Spawned ${mcType} at (${x}, ${y}, ${z})`);
+  broadcastState();
+  
+  return { success: true, entityId: entities.length - 1 };
 }
 
 // EPK Export (M3 implementation)
@@ -380,22 +454,28 @@ function exportEPK(outputPath) {
   const levelDat = createLevelDat();
   entries.push({ type: 'FILE', name: 'level.dat', data: levelDat });
   
-  // Add region files
+  // Group chunks by region
+  const regionChunks = new Map();
   for (let cx = 0; cx < WORLD_SIZE; cx++) {
     for (let cz = 0; cz < WORLD_SIZE; cz++) {
-      const chunk = world.getChunk(cx, cz);
+      const chunk = getChunk(cx, cz);
       if (chunk) {
         const regionX = Math.floor(cx / 32);
         const regionZ = Math.floor(cz / 32);
         const regionKey = `${regionX}_${regionZ}`;
-        
-        if (!entries.find(e => e.name === `region/r.${regionX}.${regionZ}.mca`)) {
-          // Create region file with chunks
-          const regionData = createRegionFile(cx, cz, chunk);
-          entries.push({ type: 'FILE', name: `region/r.${regionX}.${regionZ}.mca`, data: regionData });
+        if (!regionChunks.has(regionKey)) {
+          regionChunks.set(regionKey, []);
         }
+        regionChunks.get(regionKey).push({ cx, cz, chunk });
       }
     }
+  }
+  
+  // Create region files
+  for (const [regionKey, chunkList] of regionChunks) {
+    const [regionX, regionZ] = regionKey.split('_').map(Number);
+    const regionData = createRegionFile(chunkList);
+    entries.push({ type: 'FILE', name: `region/r.${regionX}.${regionZ}.mca`, data: regionData });
   }
   
   // Build EPK
@@ -406,19 +486,172 @@ function exportEPK(outputPath) {
 }
 
 function createLevelDat() {
-  // Minimal level.dat NBT (simplified, in production use prismarine-nbt)
-  const nbt = Buffer.from([
-    0x1F, 0x8B, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, // gzip header
-    // Actual NBT would go here (compressed)
-  ]);
-  // For now, return placeholder - full implementation in M3
-  return Buffer.alloc(100);
+  // Minimal level.dat NBT using prismarine-nbt
+  const nbt = require('prismarine-nbt');
+  
+  const levelData = {
+    type: 'compound',
+    name: '',
+    value: {
+      Data: {
+        type: 'compound',
+        value: {
+          Version: { type: 'int', value: 19133 }, // MC 1.8.9
+          LevelName: { type: 'string', value: 'eaglercraft-mcp world' },
+          SpawnX: { type: 'int', value: 128 },
+          SpawnY: { type: 'int', value: 64 },
+          SpawnZ: { type: 'int', value: 128 },
+          GameType: { type: 'int', value: 1 }, // Creative mode
+          Difficulty: { type: 'int', value: 0 }, // Peaceful
+          Time: { type: 'long', value: [0, 0] },
+          DayTime: { type: 'long', value: [0, 0] },
+          LastPlayed: { type: 'long', value: [Math.floor(Date.now() / 1000), 0] },
+          SizeOnDisk: { type: 'long', value: [0, 0] },
+          Player: {
+            type: 'compound',
+            value: {
+              Pos: { type: 'list', value: { type: 'double', value: [128.5, 64, 128.5] } },
+              Health: { type: 'float', value: 20 },
+              Score: { type: 'int', value: 0 }
+            }
+          }
+        }
+      }
+    }
+  };
+  
+  const buf = nbt.writeUncompressed(levelData);
+  return zlib.gzipSync(buf);
 }
 
-function createRegionFile(cx, cz, chunk) {
-  // Convert prismarine-chunk to Anvil format
-  // Full implementation in M3
-  return Buffer.alloc(8192);
+function createRegionFile(chunkList) {
+  // Create a minimal Anvil region file containing the chunks
+  // Region file format: 8KB header + chunk data
+  // Each chunk: location table entry (4 bytes) + timestamp entry (4 bytes) + chunk data
+  
+  const nbt = require('prismarine-nbt');
+  const SECTOR_SIZE = 4096;
+  
+  // Build chunk data
+  const chunkBuffers = [];
+  const locations = new Array(32 * 32).fill(0);
+  const timestamps = new Array(32 * 32).fill(0);
+  
+  let currentSector = 2; // Header uses sectors 0 and 1
+  
+  for (const { cx, cz, chunk } of chunkList) {
+    const localX = cx % 32;
+    const localZ = cz % 32;
+    const idx = localX + localZ * 32;
+    
+    // Collect entities in this chunk
+    const chunkEntities = entities.filter(e => 
+      Math.floor(e.x / 16) === cx && Math.floor(e.z / 16) === cz
+    );
+    
+    // Convert entity NBTs to Anvil format
+    const entityNbtList = chunkEntities.map(e => e.nbt.value);
+    
+    // Convert chunk to NBT format for Anvil
+    const chunkNbt = {
+      type: 'compound',
+      name: '',
+      value: {
+        Level: {
+          type: 'compound',
+          value: {
+            xPos: { type: 'int', value: cx },
+            zPos: { type: 'int', value: cz },
+            TerrainPopulated: { type: 'byte', value: 1 },
+            LightPopulated: { type: 'byte', value: 1 },
+            InhabitedTime: { type: 'long', value: [0, 0] },
+            Sections: serializeChunkSections(chunk),
+            Entities: { type: 'list', value: { type: 'compound', value: entityNbtList } },
+            TileEntities: { type: 'list', value: { type: 'compound', value: [] } }
+          }
+        }
+      }
+    };
+    
+    const chunkData = zlib.gzipSync(nbt.writeUncompressed(chunkNbt));
+    const chunkSize = chunkData.length + 5; // +5 for compression type byte
+    const sectorCount = Math.ceil(chunkSize / SECTOR_SIZE);
+    
+    locations[idx] = (currentSector << 8) | sectorCount;
+    timestamps[idx] = Math.floor(Date.now() / 1000);
+    
+    // Prepend size and compression type
+    const sizeBuf = Buffer.alloc(4);
+    sizeBuf.writeUInt32BE(chunkSize, 0);
+    const compressionBuf = Buffer.from([2]); // 2 = gzip
+    
+    const fullChunkBuf = Buffer.concat([sizeBuf, compressionBuf, chunkData]);
+    chunkBuffers.push({ offset: currentSector * SECTOR_SIZE, data: fullChunkBuf });
+    
+    currentSector += sectorCount;
+  }
+  
+  // Build region file
+  const locationTable = Buffer.alloc(SECTOR_SIZE);
+  const timestampTable = Buffer.alloc(SECTOR_SIZE);
+  
+  for (let i = 0; i < 1024; i++) {
+    locationTable.writeUInt32BE(locations[i] || 0, i * 4);
+    timestampTable.writeUInt32BE(timestamps[i] || 0, i * 4);
+  }
+  
+  const totalSize = currentSector * SECTOR_SIZE;
+  const regionBuf = Buffer.alloc(totalSize);
+  
+  locationTable.copy(regionBuf, 0);
+  timestampTable.copy(regionBuf, SECTOR_SIZE);
+  
+  for (const { offset, data } of chunkBuffers) {
+    if (offset + data.length <= totalSize) {
+      data.copy(regionBuf, offset);
+    }
+  }
+  
+  return regionBuf;
+}
+
+function serializeChunkSections(chunk) {
+  const sections = [];
+  
+  // For MC 1.8, we need 16 sections (0-15) for full height
+  for (let y = 0; y < 16; y++) {
+    const section = {
+      Y: { type: 'byte', value: y },
+      Blocks: { type: 'buffer', value: Buffer.alloc(4096) },
+      Data: { type: 'buffer', value: Buffer.alloc(2048) }
+    };
+    
+    // Extract block data for this section
+    for (let lx = 0; lx < 16; lx++) {
+      for (let lz = 0; lz < 16; lz++) {
+        for (let ly = 0; ly < 16; ly++) {
+          const globalY = y * 16 + ly;
+          const block = chunk.getBlock(new Vec3(lx, globalY, lz));
+          const idx = ly + lz * 16 + lx * 256;
+          section.Blocks.value[idx] = block.type;
+          
+          // Set metadata (half-byte per block)
+          const metaIdx = Math.floor((ly + lz * 16 + lx * 256) / 2);
+          const isEven = (ly + lz * 16 + lx * 256) % 2 === 0;
+          if (isEven) {
+            section.Data.value[metaIdx] = (block.metadata & 0x0F);
+          } else {
+            section.Data.value[metaIdx] |= ((block.metadata & 0x0F) << 4);
+          }
+        }
+      }
+    }
+    
+    sections.push(section);
+  }
+  
+  // Return in prismarine-nbt list format
+  return { type: 'list', value: { type: 'compound', value: sections } };
 }
 
 function buildEPK(entries, fileType) {
@@ -562,6 +795,17 @@ function startHTTPServer() {
     } else if (req.url === '/client.js') {
       res.writeHead(200, { 'Content-Type': 'application/javascript' });
       res.end(CLIENT_JS);
+    } else if (req.url === '/play' || req.url === '/play/') {
+      // Serve the full Eaglercraft client
+      fs.readFile(path.join(__dirname, 'launch.html'), (err, data) => {
+        if (err) {
+          res.writeHead(500);
+          res.end('Error loading Eaglercraft client');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(data);
+      });
     } else if (req.url === '/api/snapshot') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(snapshot()));
@@ -582,6 +826,7 @@ function startHTTPServer() {
   
   server.listen(PORT, () => {
     console.log(`Viewer running at http://localhost:${PORT}`);
+    console.log(`Full Eaglercraft client at http://localhost:${PORT}/play`);
   });
 }
 
@@ -639,7 +884,7 @@ function handleMCP() {
     buffer += data.toString();
     
     while (true) {
-      const newlineIdx = buffer.indexOf('\\n');
+      const newlineIdx = buffer.indexOf('\n');
       if (newlineIdx === -1) break;
       
       const line = buffer.slice(0, newlineIdx);
@@ -650,7 +895,7 @@ function handleMCP() {
       try {
         const request = JSON.parse(line);
         const response = handleMCPRequest(request);
-        process.stdout.write(JSON.stringify(response) + '\\n');
+        process.stdout.write(JSON.stringify(response) + '\n');
       } catch (e) {
         console.error('MCP parse error:', e);
       }
@@ -724,13 +969,27 @@ function handleMCPRequest(request) {
             },
             {
               name: 'snapshot',
-              description: 'Get current state of all loaded chunks',
+              description: 'Get current state of all loaded chunks and entities',
               inputSchema: { type: 'object', properties: {} }
             },
             {
               name: 'undo',
               description: 'Undo the last block operation',
               inputSchema: { type: 'object', properties: {} }
+            },
+            {
+              name: 'spawn_entity',
+              description: 'Spawn an entity (mob) at specified coordinates. Supported types: sheep, cow, pig, chicken, zombie, skeleton, creeper, spider, villager, horse, wolf, ocelot',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', description: 'Entity type (e.g., "sheep", "cow")' },
+                  x: { type: 'integer', description: 'X coordinate' },
+                  y: { type: 'integer', description: 'Y coordinate' },
+                  z: { type: 'integer', description: 'Z coordinate' }
+                },
+                required: ['type', 'x', 'y', 'z']
+              }
             },
             {
               name: 'export_epk',
@@ -766,6 +1025,9 @@ function handleMCPRequest(request) {
           break;
         case 'undo':
           result = undo();
+          break;
+        case 'spawn_entity':
+          result = spawnEntity(args.type, args.x, args.y, args.z);
           break;
         case 'export_epk':
           result = exportEPK(args.outputPath);

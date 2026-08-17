@@ -1,3 +1,10 @@
 ```
+# Dependencies
 node_modules/
+
+# Minecraft textures and assets from prismarine-viewer
+node_modules/prismarine-viewer/public/textures/
+node_modules/prismarine-viewer/public/models/
+node_modules/prismarine-viewer/public/particles/
+node_modules/prismarine-viewer/public/sounds/
 ```
