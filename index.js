@@ -22,6 +22,77 @@ const mcData = require('minecraft-data')('1.8.9');
 const Vec3 = require('vec3').Vec3;
 const WebSocket = require('ws');
 
+// MC 1.8 Block Registry - Authoritative list for AI
+// Usage: AI can reference any block by name (e.g., "oak_planks", "cobblestone")
+const BLOCK_REGISTRY = {
+  'air': { id: 0, data: 0 }, 'stone': { id: 1, data: 0 }, 'grass': { id: 2, data: 0 },
+  'dirt': { id: 3, data: 0 }, 'cobblestone': { id: 4, data: 0 },
+  'planks': { id: 5, data: 0 }, 'oak_planks': { id: 5, data: 0 },
+  'spruce_planks': { id: 5, data: 1 }, 'birch_planks': { id: 5, data: 2 }, 'jungle_planks': { id: 5, data: 3 },
+  'bedrock': { id: 7, data: 0 }, 'water': { id: 8, data: 0 }, 'lava': { id: 10, data: 0 },
+  'sand': { id: 12, data: 0 }, 'gravel': { id: 13, data: 0 },
+  'gold_ore': { id: 14, data: 0 }, 'iron_ore': { id: 15, data: 0 }, 'coal_ore': { id: 16, data: 0 },
+  'log': { id: 17, data: 0 }, 'oak_log': { id: 17, data: 0 },
+  'spruce_log': { id: 17, data: 1 }, 'birch_log': { id: 17, data: 2 }, 'jungle_log': { id: 17, data: 3 },
+  'leaves': { id: 18, data: 0 }, 'oak_leaves': { id: 18, data: 0 },
+  'spruce_leaves': { id: 18, data: 1 }, 'birch_leaves': { id: 18, data: 2 }, 'jungle_leaves': { id: 18, data: 3 },
+  'glass': { id: 20, data: 0 }, 'lapis_ore': { id: 21, data: 0 }, 'lapis_block': { id: 22, data: 0 },
+  'sandstone': { id: 24, data: 0 }, 'bed': { id: 26, data: 0 },
+  'sticky_piston': { id: 29, data: 0 }, 'piston': { id: 33, data: 0 },
+  'wool': { id: 35, data: 0 }, 'white_wool': { id: 35, data: 0 }, 'orange_wool': { id: 35, data: 1 },
+  'magenta_wool': { id: 35, data: 2 }, 'light_blue_wool': { id: 35, data: 3 }, 'yellow_wool': { id: 35, data: 4 },
+  'lime_wool': { id: 35, data: 5 }, 'pink_wool': { id: 35, data: 6 }, 'gray_wool': { id: 35, data: 7 },
+  'light_gray_wool': { id: 35, data: 8 }, 'cyan_wool': { id: 35, data: 9 }, 'purple_wool': { id: 35, data: 10 },
+  'blue_wool': { id: 35, data: 11 }, 'brown_wool': { id: 35, data: 12 }, 'green_wool': { id: 35, data: 13 },
+  'red_wool': { id: 35, data: 14 }, 'black_wool': { id: 35, data: 15 },
+  'gold_block': { id: 41, data: 0 }, 'iron_block': { id: 42, data: 0 },
+  'brick_block': { id: 45, data: 0 }, 'tnt': { id: 46, data: 0 }, 'bookshelf': { id: 47, data: 0 },
+  'mossy_cobblestone': { id: 48, data: 0 }, 'obsidian': { id: 49, data: 0 },
+  'torch': { id: 50, data: 5 }, 'fire': { id: 51, data: 0 }, 'mob_spawner': { id: 52, data: 0 },
+  'oak_stairs': { id: 53, data: 0 }, 'chest': { id: 54, data: 0 },
+  'diamond_ore': { id: 56, data: 0 }, 'diamond_block': { id: 57, data: 0 },
+  'crafting_table': { id: 58, data: 0 }, 'furnace': { id: 61, data: 0 },
+  'ladder': { id: 65, data: 0 }, 'rail': { id: 66, data: 0 }, 'stone_stairs': { id: 67, data: 0 },
+  'lever': { id: 69, data: 0 }, 'wooden_pressure_plate': { id: 72, data: 0 },
+  'iron_door': { id: 71, data: 0 }, 'wooden_door': { id: 64, data: 0 },
+  'redstone_ore': { id: 73, data: 0 }, 'snow_layer': { id: 78, data: 0 }, 'ice': { id: 79, data: 0 },
+  'snow': { id: 80, data: 0 }, 'cactus': { id: 81, data: 0 }, 'clay': { id: 82, data: 0 },
+  'jukebox': { id: 84, data: 0 }, 'fence': { id: 85, data: 0 }, 'pumpkin': { id: 86, data: 0 },
+  'netherrack': { id: 87, data: 0 }, 'soul_sand': { id: 88, data: 0 }, 'glowstone': { id: 89, data: 0 },
+  'lit_pumpkin': { id: 91, data: 0 }, 'trapdoor': { id: 96, data: 0 },
+  'stone_bricks': { id: 98, data: 0 }, 'glass_pane': { id: 102, data: 0 }, 'melon_block': { id: 103, data: 0 },
+  'fence_gate': { id: 107, data: 0 }, 'brick_stairs': { id: 108, data: 0 },
+  'stone_brick_stairs': { id: 109, data: 0 }, 'mycelium': { id: 110, data: 0 },
+  'nether_brick': { id: 112, data: 0 }, 'nether_brick_stairs': { id: 114, data: 0 },
+  'enchanting_table': { id: 116, data: 0 }, 'end_portal_frame': { id: 120, data: 0 },
+  'end_stone': { id: 121, data: 0 }, 'emerald_ore': { id: 129, data: 0 }, 'emerald_block': { id: 133, data: 0 },
+  'spruce_stairs': { id: 134, data: 0 }, 'birch_stairs': { id: 135, data: 0 }, 'jungle_stairs': { id: 136, data: 0 },
+  'command_block': { id: 137, data: 0 }, 'beacon': { id: 138, data: 0 },
+  'anvil': { id: 145, data: 0 }, 'redstone_block': { id: 152, data: 0 },
+  'quartz_block': { id: 155, data: 0 }, 'quartz_stairs': { id: 156, data: 0 },
+  'slime_block': { id: 165, data: 0 }, 'barrier': { id: 166, data: 0 },
+  'prismarine': { id: 168, data: 0 }, 'sea_lantern': { id: 169, data: 0 },
+  'hay_block': { id: 170, data: 0 }, 'carpet': { id: 171, data: 0 },
+  'hardened_clay': { id: 172, data: 0 }, 'coal_block': { id: 173, data: 0 },
+  'packed_ice': { id: 174, data: 0 }, 'red_sandstone': { id: 179, data: 0 }
+};
+
+// MC 1.8 Entity Registry
+const ENTITY_REGISTRY = {
+  'bat': 'Bat', 'blaze': 'Blaze', 'cave_spider': 'CaveSpider',
+  'chicken': 'Chicken', 'cow': 'Cow', 'creeper': 'Creeper',
+  'ender_dragon': 'EnderDragon', 'enderman': 'Enderman',
+  'horse': 'Horse', 'iron_golem': 'VillagerGolem',
+  'magma_cube': 'LavaSlime', 'mooshroom': 'MushroomCow',
+  'ocelot': 'Ozelot', 'pig': 'Pig', 'rabbit': 'Rabbit',
+  'sheep': 'Sheep', 'silverfish': 'Silverfish',
+  'skeleton': 'Skeleton', 'wither_skeleton': 'Skeleton',
+  'slime': 'Slime', 'snowman': 'SnowMan', 'spider': 'Spider',
+  'squid': 'Squid', 'villager': 'Villager', 'witch': 'Witch',
+  'wither': 'WitherBoss', 'wolf': 'Wolf',
+  'zombie': 'Zombie', 'zombie_pigman': 'PigZombie'
+};
+
 // Simple in-memory world storage (no prismarine-world dependency needed)
 // We store chunks in a Map: "x,z" -> Chunk
 
@@ -926,21 +997,22 @@ function handleMCPRequest(request) {
           tools: [
             {
               name: 'set_block',
-              description: 'Place a single block at specified coordinates',
+              description: 'Place a single block at specified coordinates. Use block names from BLOCK_REGISTRY (e.g., "oak_planks", "cobblestone", "glass") or numeric IDs.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   x: { type: 'integer', description: 'X coordinate' },
                   y: { type: 'integer', description: 'Y coordinate (0-255)' },
                   z: { type: 'integer', description: 'Z coordinate' },
-                  blockId: { type: 'integer', description: 'Minecraft 1.8 block ID (e.g., 1=stone, 2=grass, 3=dirt, 5=wood, etc.)' }
+                  block: { type: 'string', description: 'Block name (e.g., "oak_planks", "cobblestone", "glass") OR blockId: number for numeric ID' },
+                  blockId: { type: 'integer', description: '(Deprecated) Numeric block ID. Prefer using "block" name.' }
                 },
-                required: ['x', 'y', 'z', 'blockId']
+                required: ['x', 'y', 'z']
               }
             },
             {
               name: 'fill',
-              description: 'Fill a rectangular region with blocks',
+              description: 'Fill a rectangular region with blocks. Use block names from BLOCK_REGISTRY (e.g., "stone", "dirt", "oak_log").',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -950,14 +1022,15 @@ function handleMCPRequest(request) {
                   x2: { type: 'integer', description: 'Second X coordinate' },
                   y2: { type: 'integer', description: 'Second Y coordinate' },
                   z2: { type: 'integer', description: 'Second Z coordinate' },
-                  blockId: { type: 'integer', description: 'Block ID to place' }
+                  block: { type: 'string', description: 'Block name (e.g., "stone", "dirt", "oak_log")' },
+                  blockId: { type: 'integer', description: '(Deprecated) Numeric block ID' }
                 },
-                required: ['x1', 'y1', 'z1', 'x2', 'y2', 'z2', 'blockId']
+                required: ['x1', 'y1', 'z1', 'x2', 'y2', 'z2', 'block']
               }
             },
             {
               name: 'get_area',
-              description: 'Get all non-air blocks in a region',
+              description: 'Get all non-air blocks in a region. Returns list of blocks with positions and types.',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -969,21 +1042,21 @@ function handleMCPRequest(request) {
             },
             {
               name: 'snapshot',
-              description: 'Get current state of all loaded chunks and entities',
+              description: 'Get current state of all loaded chunks and entities. Returns complete world state.',
               inputSchema: { type: 'object', properties: {} }
             },
             {
               name: 'undo',
-              description: 'Undo the last block operation',
+              description: 'Undo the last block operation (set_block or fill).',
               inputSchema: { type: 'object', properties: {} }
             },
             {
               name: 'spawn_entity',
-              description: 'Spawn an entity (mob) at specified coordinates. Supported types: sheep, cow, pig, chicken, zombie, skeleton, creeper, spider, villager, horse, wolf, ocelot',
+              description: 'Spawn an entity (mob) at specified coordinates. Available entities: bat, blaze, cave_spider, chicken, cow, creeper, ender_dragon, enderman, horse, iron_golem, magma_cube, mooshroom, ocelot, pig, rabbit, sheep, silverfish, skeleton, wither_skeleton, slime, snowman, spider, squid, villager, witch, wither, wolf, zombie, zombie_pigman',
               inputSchema: {
                 type: 'object',
                 properties: {
-                  type: { type: 'string', description: 'Entity type (e.g., "sheep", "cow")' },
+                  type: { type: 'string', enum: Object.keys(ENTITY_REGISTRY), description: 'Entity type (e.g., "sheep", "cow", "creeper")' },
                   x: { type: 'integer', description: 'X coordinate' },
                   y: { type: 'integer', description: 'Y coordinate' },
                   z: { type: 'integer', description: 'Z coordinate' }
@@ -993,14 +1066,19 @@ function handleMCPRequest(request) {
             },
             {
               name: 'export_epk',
-              description: 'Export the world as an Eaglercraft .epk file',
+              description: 'Export the world as an Eaglercraft .epk file. Save to specified path and import into Eaglercraft client.',
               inputSchema: {
                 type: 'object',
                 properties: {
-                  outputPath: { type: 'string', description: 'Path to save the .epk file' }
+                  outputPath: { type: 'string', description: 'Path to save the .epk file (e.g., "./world.epk")' }
                 },
                 required: ['outputPath']
               }
+            },
+            {
+              name: 'list_blocks',
+              description: 'Return the complete BLOCK_REGISTRY showing all available blocks with their names and IDs. Use this to discover what blocks you can build with.',
+              inputSchema: { type: 'object', properties: {} }
             }
           ]
         }
@@ -1012,10 +1090,25 @@ function handleMCPRequest(request) {
       
       switch (name) {
         case 'set_block':
-          result = setBlock(args.x, args.y, args.z, args.blockId);
+          // Support both block name and blockId
+          let blockId = args.blockId;
+          if (args.block && BLOCK_REGISTRY[args.block]) {
+            blockId = BLOCK_REGISTRY[args.block].id;
+          } else if (args.block && !blockId) {
+            result = { error: `Unknown block: ${args.block}. Use list_blocks to see available blocks.` };
+            break;
+          }
+          result = setBlock(args.x, args.y, args.z, blockId);
           break;
         case 'fill':
-          result = fill(args.x1, args.y1, args.z1, args.x2, args.y2, args.z2, args.blockId);
+          let fillBlockId = args.blockId;
+          if (args.block && BLOCK_REGISTRY[args.block]) {
+            fillBlockId = BLOCK_REGISTRY[args.block].id;
+          } else if (args.block && !fillBlockId) {
+            result = { error: `Unknown block: ${args.block}. Use list_blocks to see available blocks.` };
+            break;
+          }
+          result = fill(args.x1, args.y1, args.z1, args.x2, args.y2, args.z2, fillBlockId);
           break;
         case 'get_area':
           result = getArea(args.x1, args.y1, args.z1, args.x2, args.y2, args.z2);
@@ -1031,6 +1124,9 @@ function handleMCPRequest(request) {
           break;
         case 'export_epk':
           result = exportEPK(args.outputPath);
+          break;
+        case 'list_blocks':
+          result = { blocks: BLOCK_REGISTRY, count: Object.keys(BLOCK_REGISTRY).length };
           break;
         default:
           result = { error: `Unknown tool: ${name}` };
