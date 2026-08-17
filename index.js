@@ -22,76 +22,45 @@ const mcData = require('minecraft-data')('1.8.9');
 const Vec3 = require('vec3').Vec3;
 const WebSocket = require('ws');
 
-// MC 1.8 Block Registry - Authoritative list for AI
+// Auto-generated MC 1.8 Block Registry from minecraft-data
 // Usage: AI can reference any block by name (e.g., "oak_planks", "cobblestone")
-const BLOCK_REGISTRY = {
-  'air': { id: 0, data: 0 }, 'stone': { id: 1, data: 0 }, 'grass': { id: 2, data: 0 },
-  'dirt': { id: 3, data: 0 }, 'cobblestone': { id: 4, data: 0 },
-  'planks': { id: 5, data: 0 }, 'oak_planks': { id: 5, data: 0 },
-  'spruce_planks': { id: 5, data: 1 }, 'birch_planks': { id: 5, data: 2 }, 'jungle_planks': { id: 5, data: 3 },
-  'bedrock': { id: 7, data: 0 }, 'water': { id: 8, data: 0 }, 'lava': { id: 10, data: 0 },
-  'sand': { id: 12, data: 0 }, 'gravel': { id: 13, data: 0 },
-  'gold_ore': { id: 14, data: 0 }, 'iron_ore': { id: 15, data: 0 }, 'coal_ore': { id: 16, data: 0 },
-  'log': { id: 17, data: 0 }, 'oak_log': { id: 17, data: 0 },
-  'spruce_log': { id: 17, data: 1 }, 'birch_log': { id: 17, data: 2 }, 'jungle_log': { id: 17, data: 3 },
-  'leaves': { id: 18, data: 0 }, 'oak_leaves': { id: 18, data: 0 },
-  'spruce_leaves': { id: 18, data: 1 }, 'birch_leaves': { id: 18, data: 2 }, 'jungle_leaves': { id: 18, data: 3 },
-  'glass': { id: 20, data: 0 }, 'lapis_ore': { id: 21, data: 0 }, 'lapis_block': { id: 22, data: 0 },
-  'sandstone': { id: 24, data: 0 }, 'bed': { id: 26, data: 0 },
-  'sticky_piston': { id: 29, data: 0 }, 'piston': { id: 33, data: 0 },
-  'wool': { id: 35, data: 0 }, 'white_wool': { id: 35, data: 0 }, 'orange_wool': { id: 35, data: 1 },
-  'magenta_wool': { id: 35, data: 2 }, 'light_blue_wool': { id: 35, data: 3 }, 'yellow_wool': { id: 35, data: 4 },
-  'lime_wool': { id: 35, data: 5 }, 'pink_wool': { id: 35, data: 6 }, 'gray_wool': { id: 35, data: 7 },
-  'light_gray_wool': { id: 35, data: 8 }, 'cyan_wool': { id: 35, data: 9 }, 'purple_wool': { id: 35, data: 10 },
-  'blue_wool': { id: 35, data: 11 }, 'brown_wool': { id: 35, data: 12 }, 'green_wool': { id: 35, data: 13 },
-  'red_wool': { id: 35, data: 14 }, 'black_wool': { id: 35, data: 15 },
-  'gold_block': { id: 41, data: 0 }, 'iron_block': { id: 42, data: 0 },
-  'brick_block': { id: 45, data: 0 }, 'tnt': { id: 46, data: 0 }, 'bookshelf': { id: 47, data: 0 },
-  'mossy_cobblestone': { id: 48, data: 0 }, 'obsidian': { id: 49, data: 0 },
-  'torch': { id: 50, data: 5 }, 'fire': { id: 51, data: 0 }, 'mob_spawner': { id: 52, data: 0 },
-  'oak_stairs': { id: 53, data: 0 }, 'chest': { id: 54, data: 0 },
-  'diamond_ore': { id: 56, data: 0 }, 'diamond_block': { id: 57, data: 0 },
-  'crafting_table': { id: 58, data: 0 }, 'furnace': { id: 61, data: 0 },
-  'ladder': { id: 65, data: 0 }, 'rail': { id: 66, data: 0 }, 'stone_stairs': { id: 67, data: 0 },
-  'lever': { id: 69, data: 0 }, 'wooden_pressure_plate': { id: 72, data: 0 },
-  'iron_door': { id: 71, data: 0 }, 'wooden_door': { id: 64, data: 0 },
-  'redstone_ore': { id: 73, data: 0 }, 'snow_layer': { id: 78, data: 0 }, 'ice': { id: 79, data: 0 },
-  'snow': { id: 80, data: 0 }, 'cactus': { id: 81, data: 0 }, 'clay': { id: 82, data: 0 },
-  'jukebox': { id: 84, data: 0 }, 'fence': { id: 85, data: 0 }, 'pumpkin': { id: 86, data: 0 },
-  'netherrack': { id: 87, data: 0 }, 'soul_sand': { id: 88, data: 0 }, 'glowstone': { id: 89, data: 0 },
-  'lit_pumpkin': { id: 91, data: 0 }, 'trapdoor': { id: 96, data: 0 },
-  'stone_bricks': { id: 98, data: 0 }, 'glass_pane': { id: 102, data: 0 }, 'melon_block': { id: 103, data: 0 },
-  'fence_gate': { id: 107, data: 0 }, 'brick_stairs': { id: 108, data: 0 },
-  'stone_brick_stairs': { id: 109, data: 0 }, 'mycelium': { id: 110, data: 0 },
-  'nether_brick': { id: 112, data: 0 }, 'nether_brick_stairs': { id: 114, data: 0 },
-  'enchanting_table': { id: 116, data: 0 }, 'end_portal_frame': { id: 120, data: 0 },
-  'end_stone': { id: 121, data: 0 }, 'emerald_ore': { id: 129, data: 0 }, 'emerald_block': { id: 133, data: 0 },
-  'spruce_stairs': { id: 134, data: 0 }, 'birch_stairs': { id: 135, data: 0 }, 'jungle_stairs': { id: 136, data: 0 },
-  'command_block': { id: 137, data: 0 }, 'beacon': { id: 138, data: 0 },
-  'anvil': { id: 145, data: 0 }, 'redstone_block': { id: 152, data: 0 },
-  'quartz_block': { id: 155, data: 0 }, 'quartz_stairs': { id: 156, data: 0 },
-  'slime_block': { id: 165, data: 0 }, 'barrier': { id: 166, data: 0 },
-  'prismarine': { id: 168, data: 0 }, 'sea_lantern': { id: 169, data: 0 },
-  'hay_block': { id: 170, data: 0 }, 'carpet': { id: 171, data: 0 },
-  'hardened_clay': { id: 172, data: 0 }, 'coal_block': { id: 173, data: 0 },
-  'packed_ice': { id: 174, data: 0 }, 'red_sandstone': { id: 179, data: 0 }
-};
+const BLOCK_REGISTRY = {};
+for (const block of Object.values(mcData.blocks)) {
+  // Add primary name
+  BLOCK_REGISTRY[block.name] = { id: block.id, displayName: block.displayName };
+  // Add common aliases for convenience
+  if (block.name === 'planks') {
+    BLOCK_REGISTRY['oak_planks'] = { id: block.id, displayName: 'Oak Planks' };
+  }
+  if (block.name === 'log') {
+    BLOCK_REGISTRY['oak_log'] = { id: block.id, displayName: 'Oak Log' };
+  }
+  if (block.name === 'leaves') {
+    BLOCK_REGISTRY['oak_leaves'] = { id: block.id, displayName: 'Oak Leaves' };
+  }
+  if (block.name === 'wool') {
+    BLOCK_REGISTRY['white_wool'] = { id: block.id, displayName: 'White Wool' };
+  }
+}
 
-// MC 1.8 Entity Registry
-const ENTITY_REGISTRY = {
-  'bat': 'Bat', 'blaze': 'Blaze', 'cave_spider': 'CaveSpider',
-  'chicken': 'Chicken', 'cow': 'Cow', 'creeper': 'Creeper',
-  'ender_dragon': 'EnderDragon', 'enderman': 'Enderman',
-  'horse': 'Horse', 'iron_golem': 'VillagerGolem',
-  'magma_cube': 'LavaSlime', 'mooshroom': 'MushroomCow',
-  'ocelot': 'Ozelot', 'pig': 'Pig', 'rabbit': 'Rabbit',
-  'sheep': 'Sheep', 'silverfish': 'Silverfish',
-  'skeleton': 'Skeleton', 'wither_skeleton': 'Skeleton',
-  'slime': 'Slime', 'snowman': 'SnowMan', 'spider': 'Spider',
-  'squid': 'Squid', 'villager': 'Villager', 'witch': 'Witch',
-  'wither': 'WitherBoss', 'wolf': 'Wolf',
-  'zombie': 'Zombie', 'zombie_pigman': 'PigZombie'
-};
+// Auto-generated MC 1.8 Entity Registry from minecraft-data (mobs only)
+const ENTITY_REGISTRY = {};
+for (const entity of Object.values(mcData.entities)) {
+  if (entity.category === 'Mob' || entity.type === 'mob') {
+    const normalizedName = entity.name.toLowerCase().replace(/([a-z])([A-Z])/g, '$1_$2');
+    ENTITY_REGISTRY[normalizedName] = { 
+      id: entity.internalId || entity.id, 
+      displayName: entity.displayName,
+      internalId: entity.internalId
+    };
+  }
+}
+// Add some legacy names for compatibility
+if (ENTITY_REGISTRY['pig_zombie']) ENTITY_REGISTRY['zombie_pigman'] = ENTITY_REGISTRY['pig_zombie'];
+if (ENTITY_REGISTRY['villager_golem']) ENTITY_REGISTRY['iron_golem'] = ENTITY_REGISTRY['villager_golem'];
+if (ENTITY_REGISTRY['entity_horse']) ENTITY_REGISTRY['horse'] = ENTITY_REGISTRY['entity_horse'];
+if (ENTITY_REGISTRY['snow_man']) ENTITY_REGISTRY['snowman'] = ENTITY_REGISTRY['snow_man'];
+if (ENTITY_REGISTRY['ozelot']) ENTITY_REGISTRY['ocelot'] = ENTITY_REGISTRY['ozelot'];
 
 // Simple in-memory world storage (no prismarine-world dependency needed)
 // We store chunks in a Map: "x,z" -> Chunk
@@ -1079,6 +1048,11 @@ function handleMCPRequest(request) {
               name: 'list_blocks',
               description: 'Return the complete BLOCK_REGISTRY showing all available blocks with their names and IDs. Use this to discover what blocks you can build with.',
               inputSchema: { type: 'object', properties: {} }
+            },
+            {
+              name: 'list_entities',
+              description: 'Return the complete ENTITY_REGISTRY showing all spawnable mobs with their names and internal IDs. Use this to discover what entities you can spawn.',
+              inputSchema: { type: 'object', properties: {} }
             }
           ]
         }
@@ -1128,6 +1102,9 @@ function handleMCPRequest(request) {
         case 'list_blocks':
           result = { blocks: BLOCK_REGISTRY, count: Object.keys(BLOCK_REGISTRY).length };
           break;
+        case 'list_entities':
+          result = { entities: ENTITY_REGISTRY, count: Object.keys(ENTITY_REGISTRY).length };
+          break;
         default:
           result = { error: `Unknown tool: ${name}` };
       }
@@ -1156,10 +1133,59 @@ function main() {
   initWorld();
   startHTTPServer();
   startWSServer();
-  handleMCP();
   
-  console.log('MCP server ready (stdio)');
+  // Check for HTTP mode
+  const httpPortArg = process.argv.findIndex(arg => arg === '--http');
+  if (httpPortArg !== -1 && process.argv[httpPortArg + 1]) {
+    const httpPort = parseInt(process.argv[httpPortArg + 1]);
+    startHTTPMode(httpPort);
+    console.log(`MCP HTTP server ready on http://localhost:${httpPort}`);
+  } else {
+    handleMCP();
+    console.log('MCP server ready (stdio)');
+  }
+  
   console.log('Open http://localhost:8080 to view the world');
+}
+
+// HTTP server mode for AI clients that support HTTP URLs
+function startHTTPMode(port) {
+  const httpServer = require('http').createServer(async (req, res) => {
+    if (req.method === 'POST' && req.url === '/') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', async () => {
+        try {
+          const request = JSON.parse(body);
+          const response = handleMCPRequest(request);
+          
+          res.writeHead(200, { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify(response));
+        } catch (error) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: error.message } }));
+        }
+      });
+    } else if (req.method === 'OPTIONS') {
+      // CORS preflight
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+      res.end();
+    } else {
+      res.writeHead(404);
+      res.end('Not Found');
+    }
+  });
+  
+  httpServer.listen(port, () => {
+    console.log(`HTTP MCP endpoint listening on port ${port}`);
+  });
 }
 
 main();
