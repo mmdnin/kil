@@ -66,8 +66,8 @@ if (ENTITY_REGISTRY['ozelot']) ENTITY_REGISTRY['ocelot'] = ENTITY_REGISTRY['ozel
 // We store chunks in a Map: "x,z" -> Chunk
 
 // Configuration
-const PORT = 8080;
-const WS_PORT = 8081;
+const PORT = parseInt(process.env.VIEWER_PORT) || 30808;
+const WS_PORT = PORT + 1;
 const WORLD_SIZE = 16; // chunks in each direction (16x16 = 256x256 blocks)
 
 // Global state
@@ -125,7 +125,10 @@ const VIEWER_HTML = `
 // Client-side JavaScript for viewer
 const CLIENT_JS = `
 (function() {
-  const ws = new WebSocket('ws://' + window.location.host.replace('8080', '8081') + '/');
+  // Auto-detect WebSocket port from HTTP port
+  const httpPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+  const wsPort = parseInt(httpPort) + 1;
+  const ws = new WebSocket('ws://' + window.location.hostname + ':' + wsPort + '/');
   const logEl = document.getElementById('log');
   const statusEl = document.getElementById('status');
   const pauseBtn = document.getElementById('pauseBtn');
@@ -405,23 +408,30 @@ function snapshot() {
   for (let cx = 0; cx < WORLD_SIZE; cx++) {
     for (let cz = 0; cz < WORLD_SIZE; cz++) {
       const chunk = getChunk(cx, cz);
-      if (chunk) {
-        // Serialize chunk data manually since toJSON doesn't exist
-        const blocks = [];
-        for (let lx = 0; lx < 16; lx++) {
-          for (let lz = 0; lz < 16; lz++) {
-            for (let ly = 0; ly < 256; ly++) {
+      if (!chunk) continue;
+      
+      // Serialize chunk data manually since toJSON doesn't exist
+      const blocks = [];
+      for (let lx = 0; lx < 16; lx++) {
+        for (let lz = 0; lz < 16; lz++) {
+          for (let ly = 0; ly <= 255; ly++) {
+            try {
               const block = chunk.getBlock(new Vec3(lx, ly, lz));
-              if (block.type !== 0) {
-                blocks.push({ x: lx, y: ly, z: lz, type: block.type, meta: block.metadata });
+              if (block && block.type !== 0) {
+                blocks.push({ x: lx, y: ly, z: lz, type: block.type, meta: block.metadata || 0 });
               }
+            } catch (e) {
+              // Skip invalid blocks
             }
           }
         }
-        chunkData.push({ x: cx * 16, y: 0, z: cz * 16, blocks });
+      }
+      if (blocks.length > 0) {
+        chunkData.push({ cx, cz, blocks });
       }
     }
   }
+  console.log(`[Snapshot] Serialized ${chunkData.length} chunks with blocks`);
   return { chunks: chunkData, entities: [...entities] };
 }
 
