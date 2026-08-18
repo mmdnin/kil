@@ -1,0 +1,26 @@
+{
+  "name": "eaglercraft-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for AI to build in Eaglercraft worlds with real-time browser viewing",
+  "main": "index.js",
+  "bin": {
+    "eaglercraft-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "eaglercraft",
+    "minecraft",
+    "ai"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "minecraft-data": "^3.113.2",
+    "prismarine-chunk": "^1.41.0",
+    "prismarine-nbt": "^2.5.0",
+    "prismarine-viewer": "^1.33.0",
+    "ws": "^8.21.3"
+  }
+}
