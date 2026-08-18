@@ -524,7 +524,7 @@ function exportEPK(outputPath) {
   // Create region files
   for (const [regionKey, chunkList] of regionChunks) {
     const [regionX, regionZ] = regionKey.split('_').map(Number);
-    const regionData = createRegionFile(chunkList);
+    const regionData = createRegionFile(chunkList, regionX, regionZ);
     entries.push({ type: 'FILE', name: `region/r.${regionX}.${regionZ}.mca`, data: regionData });
   }
   
@@ -574,7 +574,7 @@ function createLevelDat() {
   return zlib.gzipSync(buf);
 }
 
-function createRegionFile(chunkList) {
+function createRegionFile(chunkList, regionX, regionZ) {
   // Create a minimal Anvil region file containing the chunks
   // Region file format: 8KB header + chunk data
   // Each chunk: location table entry (4 bytes) + timestamp entry (4 bytes) + chunk data
@@ -641,7 +641,7 @@ function createRegionFile(chunkList) {
     currentSector += sectorCount;
   }
   
-  // Build region file
+  // Build region file - 裁剪掉末尾的零填充以符合 EPK 格式要求
   const locationTable = Buffer.alloc(SECTOR_SIZE);
   const timestampTable = Buffer.alloc(SECTOR_SIZE);
   
@@ -662,7 +662,23 @@ function createRegionFile(chunkList) {
     }
   }
   
-  return regionBuf;
+  // 关键修复：裁剪掉末尾的零填充，只保留实际数据
+  // 找到最后一个非零字节的位置
+  let lastNonZero = regionBuf.length - 1;
+  while (lastNonZero >= 0 && regionBuf[lastNonZero] === 0) {
+    lastNonZero--;
+  }
+  
+  // 如果全是零，至少保留头部（8KB）
+  if (lastNonZero < SECTOR_SIZE * 2) {
+    lastNonZero = SECTOR_SIZE * 2;
+  }
+  
+  // 裁剪到最后一个非零字节 +1
+  const trimmedRegion = regionBuf.slice(0, lastNonZero + 1);
+  console.log(`[EPK] Region r.${regionX}.${regionZ}.mca: ${regionBuf.length} -> ${trimmedRegion.length} bytes (裁剪零填充)`);
+  
+  return trimmedRegion;
 }
 
 function serializeChunkSections(chunk) {
@@ -715,14 +731,32 @@ function buildEPK(entries, fileType) {
   const headKey = 'file-type';
   const headValue = fileType;
   
-  // Calculate sizes
-  let uncompressedSize = 4 + 1 + headKey.length + 4 + headValue.length + 1; // HEAD
+  // Calculate sizes accurately
+  let uncompressedSize = 0;
   
+  // HEAD entry size
+  uncompressedSize += 4; // 'HEAD'
+  uncompressedSize += 1; // key length
+  uncompressedSize += headKey.length;
+  uncompressedSize += 4; // value length
+  uncompressedSize += headValue.length;
+  uncompressedSize += 2; // ':>' (2 bytes)
+  
+  // FILE entries size
   entries.forEach(entry => {
-    uncompressedSize += 4 + 1 + entry.name.length + 4 + 4 + entry.data.length + 2; // FILE + path + len + crc + data + :>
+    uncompressedSize += 4; // 'FILE'
+    uncompressedSize += 1; // name length
+    uncompressedSize += entry.name.length;
+    uncompressedSize += 4; // data length (+5 for crc and compression type)
+    uncompressedSize += 4; // crc
+    uncompressedSize += entry.data.length;
+    uncompressedSize += 2; // ':>' (2 bytes)
   });
   
-  uncompressedSize += 4; // END$
+  // END$ marker
+  uncompressedSize += 4; // 'END$'
+  
+  console.log(`[EPK] 构建压缩包，未压缩大小：${uncompressedSize} 字节，包含 ${entries.length} 个文件`);
   
   // Compress content
   const contentBuffer = Buffer.alloc(uncompressedSize);
@@ -734,6 +768,7 @@ function buildEPK(entries, fileType) {
   contentBuffer.write(headKey, offset); offset += headKey.length;
   contentBuffer.writeUInt32BE(headValue.length, offset); offset += 4;
   contentBuffer.write(headValue, offset); offset += headValue.length;
+  contentBuffer.writeUInt8(58, offset); offset += 1; // ':'
   contentBuffer.writeUInt8(62, offset); offset += 1; // '>'
   
   // FILE entries
@@ -743,6 +778,7 @@ function buildEPK(entries, fileType) {
     contentBuffer.write('FILE', offset); offset += 4;
     contentBuffer.writeUInt8(entry.name.length, offset); offset += 1;
     contentBuffer.write(entry.name, offset); offset += entry.name.length;
+    // Data length includes 4 bytes CRC + 1 byte compression type + actual data
     contentBuffer.writeUInt32BE(entry.data.length + 5, offset); offset += 4;
     contentBuffer.writeUInt32BE(crc, offset); offset += 4;
     entry.data.copy(contentBuffer, offset); offset += entry.data.length;
@@ -750,11 +786,17 @@ function buildEPK(entries, fileType) {
     contentBuffer.writeUInt8(62, offset); offset += 1; // '>'
   });
   
-  // END$
-  contentBuffer.write('END$', offset);
+  // END$ - 关键修复：确保正确写入
+  contentBuffer.write('END$', offset); offset += 4;
+  
+  console.log(`[EPK] 实际写入偏移：${offset}, 预期大小：${uncompressedSize}`);
+  
+  // Only compress the actual written portion
+  const contentToCompress = contentBuffer.slice(0, offset);
   
   // Compress with gzip
-  const compressed = zlib.gzipSync(contentBuffer.slice(0, offset));
+  const compressed = zlib.gzipSync(contentToCompress);
+  console.log(`[EPK] 压缩后大小：${compressed.length} 字节`);
   
   // Build final EPK
   const commentBytes = Buffer.from(COMMENT);
@@ -788,7 +830,7 @@ function buildEPK(entries, fileType) {
   // File count (HEAD + entries)
   epk.writeUInt32BE(entries.length + 1, pos); pos += 4;
   
-  // Compression type
+  // Compression type ('G' for gzip)
   epk.writeUInt8('G'.charCodeAt(0), pos); pos += 1;
   
   // Compressed data
@@ -796,6 +838,8 @@ function buildEPK(entries, fileType) {
   
   // EOF signature
   EOF_SIGNATURE.copy(epk, pos);
+  
+  console.log(`[EPK] 最终文件大小：${totalSize} 字节`);
   
   return epk;
 }
